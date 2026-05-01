@@ -1,0 +1,30 @@
+# Environment
+.env
+venv/
+*.env
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.ipynb_checkpoints/
+
+# Data & Models (tracked via DVC)
+data/raw/
+dataset/raw/
+*.csv
+*.json
+*.pth
+*.h5
+*.pkl
+*.pt
+
+# Images (use DVC)
+*.jpg
+*.jpeg
+*.png
+*.zip
+
+# System
+.DS_Store
+Thumbs.db

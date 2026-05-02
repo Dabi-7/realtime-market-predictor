@@ -1,0 +1,5 @@
+outs:
+- md5: 82a40f70d7767e67cf70390f56de49cc
+  size: 8881
+  hash: md5
+  path: av_timeseries.csv

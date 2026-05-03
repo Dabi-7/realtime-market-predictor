@@ -2,20 +2,22 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 import tensorflow as tf
 import numpy as np
+import joblib
 
-# 1. Initialize the API
 app = FastAPI(title="Real-Time Market Predictor API")
 
-# 2. Load the model into memory exactly ONCE when the server starts.
-# (Make sure this path points exactly to where the model.keras file is)
-print("Loading model...")
-model = tf.keras.models.load_model("model.keras")
-print("Model loaded successfully!")
+WINDOW_SIZE = 10
+FEATURES = ['Open', 'High', 'Low', 'Close', 'Volume', 'Volatility', 'Sentiment']
+N_FEATURES = len(FEATURES)
 
-# 3. Define what the incoming JSON payload should look like
+print("Loading model and scaler...")
+model = tf.keras.models.load_model("final_weights/model.keras")
+scaler = joblib.load("final_weights/scaler.pkl")
+print("Systems Online!")
+
 class MarketData(BaseModel):
-    # We expect a list of numbers representing the market features
-    features: list[list[float]] 
+    # Expects (1, 10, 7)
+    features: list[list[list[float]]]
 
 @app.get("/")
 def health_check():
@@ -24,15 +26,29 @@ def health_check():
 @app.post("/predict")
 def predict_market(data: MarketData):
     try:
-        # Convert the incoming JSON list into a NumPy array
-        input_data = np.array(data.features)
+        input_data = np.array(data.features, dtype=np.float32)
+
+        #shape: (1, 10, 7)
+        if input_data.shape != (1, WINDOW_SIZE, N_FEATURES):
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid shape {input_data.shape}. Expected (1, {WINDOW_SIZE}, {N_FEATURES})."
+            )
+
         
-        # Run the AI prediction
-        prediction = model.predict(input_data)
-        
-        # Extract the number from the prediction array and return it
-        return {"predicted_price": float(prediction[0][0])}
+        flat_data = input_data.reshape(-1, N_FEATURES)
+        flat_scaled = scaler.transform(flat_data)
+        input_scaled = flat_scaled.reshape(input_data.shape)
+
+        prediction = model.predict(input_scaled, verbose=0)
+        prob_up = float(prediction[0][0])
+
+        return {
+            "probability_up": prob_up,
+            "predicted_direction": "Up" if prob_up > 0.5 else "Down",
+        }
     
+    except HTTPException:
+        raise
     except Exception as e:
-        # If the shape is wrong, return a clean error message
-        raise HTTPException(status_code=400, detail=f"Prediction failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Prediction failed: {str(e)}")

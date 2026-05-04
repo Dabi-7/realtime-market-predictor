@@ -1,0 +1,14 @@
+/final_weights/*.dvc
+/.git
+/.gitignore
+/frontend
+/README.md
+/*.sh
+/airflow
+/notebooks
+/*.ipynb
+/src
+/*.yml
+/*.db
+/data
+

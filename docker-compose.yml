@@ -1,0 +1,27 @@
+version: '3.8'
+
+services:
+  #the backend
+  api:
+    image: carbon390/market-predictor-api:slim
+    ports:
+      - "8000:8000"
+    networks:
+      - X390-net
+
+
+
+  #frontend
+  frontend:
+    build:
+      context: ./frontend
+    ports:
+      - "8501:8501"
+    depends_on:
+      - api
+    networks:
+      - X390-net
+
+networks:
+  X390-net:
+    driver: bridge

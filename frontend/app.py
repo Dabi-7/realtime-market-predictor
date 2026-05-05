@@ -1,5 +1,6 @@
 import streamlit as st
 import requests
+import pandas as pd
 
 # -------------------------------
 # Page Config
@@ -12,55 +13,77 @@ st.set_page_config(
 # -------------------------------
 # Title
 # -------------------------------
-st.title(" Real-Time Market Movement Predictor")
-st.markdown("Enter today's market data to predict tomorrow's trend.")
+st.title("Real-Time Market Movement Predictor")
+st.markdown("Enter the last **10 days** of market data to predict tomorrow's trend.")
 
 # -------------------------------
-# Input Section
+# Input Section: The Interactive Grid
 # -------------------------------
-st.subheader(" Enter Market Features")
+st.subheader("10-Day Market History")
+st.caption("You can edit the cells below manually, or click the top-left cell and **paste data directly from Excel/CSV**.")
 
-col1, col2 = st.columns(2)
+# 1. Define the required features
+features = ['Open', 'High', 'Low', 'Close', 'Volume', 'Volatility', 'Sentiment']
 
-with col1:
-    open_price = st.number_input("Open Price", value=0.0)
-    high_price = st.number_input("High Price", value=0.0)
-    low_price = st.number_input("Low Price", value=0.0)
-    close_price = st.number_input("Close Price", value=0.0)
+# 2. Create a default dataframe with 10 rows (Day 1 to 10) filled with 0.0
+default_data = pd.DataFrame(
+    0.0, 
+    index=[f"Day {i+1}" for i in range(10)], 
+    columns=features
+)
 
-with col2:
-    volume = st.number_input("Volume", value=0.0)
-    volatility = st.number_input("Volatility", value=0.0)
-    sentiment = st.number_input("Sentiment Score", value=0.0)
+# 3. Render the interactive spreadsheet!
+edited_df = st.data_editor(default_data, use_container_width=True)
+
+
+# Add this right above your st.data_editor line!
+uploaded_file = st.file_uploader("Upload a 10-day CSV file", type=["csv"])
+
+if uploaded_file is not None:
+    # Read the uploaded CSV
+    df = pd.read_csv(uploaded_file)
+    
+    # Ensure it only grabs the 7 features we need, and exactly 10 rows
+    try:
+        df = df[features].tail(10)
+        
+        # Overwrite the default 0.0 dataframe with the uploaded data
+        default_data.update(df.values)
+        st.success("File uploaded successfully! Review the data below.")
+    except Exception as e:
+        st.error("The uploaded CSV is missing required columns. Ensure it has: Open, High, Low, Close, Volume, Volatility, Sentiment")
+
 
 # -------------------------------
 # Predict Button
 # -------------------------------
-if st.button(" Predict Market Direction"):
+if st.button("🔮 Predict Market Direction"):
 
-    # Single day input (7 features)
-    single_day = [
-        open_price,
-        high_price,
-        low_price,
-        close_price,
-        volume,
-        volatility,
-        sentiment
-    ]
+    # Convert the interactive dataframe into a 10x7 Python list
+    sequence = edited_df.values.tolist()
 
     # -------------------------------
     # Validation
     # -------------------------------
-    if all(v == 0 for v in single_day):
-        st.warning(" Please enter valid values for prediction.")
+    # Check if the user left everything as 0.0
+
+    if (edited_df.values == 0.0).all():
+        st.warning("Please enter real market data. The model cannot predict on all zeros.")
+        st.stop()
+
+    # 2. Prevent impossible negative values (Prices and Volume can never be below 0)
+    if (edited_df[['Open', 'High', 'Low', 'Close', 'Volume']] < 0).any().any():
+        st.error("Market prices and trading volume cannot be negative. Please fix the data.")
+        st.stop()
+
+    # 3. Ensure they didn't just fill out Day 1 and leave the rest blank
+    if (edited_df['Close'] == 0.0).sum() > 0:
+        st.warning("The AI requires a full 10-day history. Please ensure no closing prices are zero.")
         st.stop()
 
     # -------------------------------
-    # Convert to (1, 10, 7)
+    # Prepare the (1, 10, 7) payload
     # -------------------------------
-    sequence = [single_day] * 10
-
     data = {
         "features": [sequence]
     }
@@ -68,10 +91,11 @@ if st.button(" Predict Market Direction"):
     # -------------------------------
     # API Call
     # -------------------------------
-    with st.spinner(" Running prediction..."):
+    with st.spinner("Running prediction..."):
         try:
+            # Using the Docker Compose network name 'api'
             response = requests.post(
-                "http://localhost:8000/predict",
+                "http://api:8000/predict",
                 json=data,
                 timeout=5
             )
@@ -83,38 +107,35 @@ if st.button(" Predict Market Direction"):
                 result = response.json()
 
                 direction = result.get("predicted_direction")
-                probability = result.get("probability_up")
+                probability = result.get("probability_up", 0.0)
 
-                st.subheader(" Prediction Result")
+                st.subheader("Prediction Result")
 
                 if direction == "Up":
-                    st.success(f" Market will go UP")
+                    st.success(f"Market will go **UP**")
                 else:
-                    st.error(f" Market will go DOWN")
+                    st.error(f"Market will go **DOWN**")
 
-                # Confidence
-                if probability is not None:
-                    st.info(f"Confidence Score: {probability:.2f}")
+                # Confidence Metric
+                st.metric("Confidence Score", f"{probability * 100:.2f}%")
 
-                # Debug info (optional for presentation)
-                with st.expander(" Show Input Sent to Model"):
-                    st.write(data)
+                # Debug info 
+                with st.expander("Show JSON Payload Sent to API"):
+                    st.json(data)
 
             else:
-                st.error(f" API Error: {response.status_code}")
+                st.error(f"API Error: {response.status_code}")
                 st.write(response.text)
 
         except requests.exceptions.ConnectionError:
-            st.error(" Cannot connect to backend. Make sure FastAPI is running.")
-
+            st.error("Cannot connect to backend. Make sure the FastAPI container is running.")
         except requests.exceptions.Timeout:
-            st.error("️ Request timed out.")
-
+            st.error("Request timed out.")
         except Exception as e:
-            st.error(f" Unexpected Error: {str(e)}")
+            st.error(f"Unexpected Error: {str(e)}")
 
 # -------------------------------
 # Footer
 # -------------------------------
 st.markdown("---")
-st.caption("Model: RNN / LSTM / GRU | Built with Streamlit + FastAPI")
+st.caption("Model: RNN / LSTM | Built with Streamlit + FastAPI + Docker")

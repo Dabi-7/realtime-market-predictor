@@ -12,3 +12,6 @@ fastapi
 uvicorn 
 pydantic
 joblib
+
+streamlit 
+requests

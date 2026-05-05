@@ -53,7 +53,11 @@ if uploaded_file is not None:
     except Exception as e:
         st.error("The uploaded CSV is missing required columns. Ensure it has: Open, High, Low, Close, Volume, Volatility, Sentiment")
 
-
+selected_model = st.selectbox(
+    "Choose AI Architecture to Test", 
+    ["LSTM", "RNN", "GRU"],
+    help="Select which neural network will process the data."
+)
 # -------------------------------
 # Predict Button
 # -------------------------------
@@ -86,6 +90,7 @@ if st.button("🔮 Predict Market Direction"):
     # -------------------------------
     data = {
         "features": [sequence]
+        "model_choice": selected_model
     }
 
     # -------------------------------

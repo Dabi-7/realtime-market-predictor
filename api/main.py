@@ -1,54 +1,59 @@
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 import tensorflow as tf
-import numpy as np
 import joblib
+import numpy as np
 
-app = FastAPI(title="Real-Time Market Predictor API")
+app = FastAPI()
 
-WINDOW_SIZE = 10
-FEATURES = ['Open', 'High', 'Low', 'Close', 'Volume', 'Volatility', 'Sentiment']
-N_FEATURES = len(FEATURES)
-
-print("Loading model and scaler...")
-model = tf.keras.models.load_model("final_weights/model.keras")
+print("Loading models and scaler...")
+# Loading scaler
 scaler = joblib.load("final_weights/scaler.pkl")
-print("Systems Online!")
+
+# loading all models
+models = {
+    "LSTM": tf.keras.models.load_model("final_weights/lstm.keras"),
+    "RNN": tf.keras.models.load_model("final_weights/rnn.keras"),
+    "GRU": tf.keras.models.load_model("final_weights/gru.keras")
+}
+print("All assets loaded successfully!")
 
 class MarketData(BaseModel):
-    # Expects (1, 10, 7)
     features: list[list[list[float]]]
+    model_choice: str 
 
 @app.get("/")
 def health_check():
-    return {"status": "System Online. Ready for predictions."}
+    return {
+        "status": "online",
+        "message": "Market Predictor API is running!",
+        "models_loaded": ["LSTM", "RNN", "GRU"]
+    }
+
 
 @app.post("/predict")
 def predict_market(data: MarketData):
-    try:
-        input_data = np.array(data.features, dtype=np.float32)
-
-        #shape: (1, 10, 7)
-        if input_data.shape != (1, WINDOW_SIZE, N_FEATURES):
-            raise HTTPException(
-                status_code=400,
-                detail=f"Invalid shape {input_data.shape}. Expected (1, {WINDOW_SIZE}, {N_FEATURES})."
-            )
-
-        
-        flat_data = input_data.reshape(-1, N_FEATURES)
-        flat_scaled = scaler.transform(flat_data)
-        input_scaled = flat_scaled.reshape(input_data.shape)
-
-        prediction = model.predict(input_scaled, verbose=0)
-        prob_up = float(prediction[0][0])
-
-        return {
-            "probability_up": prob_up,
-            "predicted_direction": "Up" if prob_up > 0.5 else "Down",
-        }
     
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Prediction failed: {str(e)}")
+    if data.model_choice not in models:
+        raise HTTPException(status_code=400, detail="Invalid model_choice. Must be RNN, LSTM, or GRU.")
+    
+    
+    input_data = np.array(data.features)
+    
+    samples, time_steps, features = input_data.shape
+    reshaped_data = input_data.reshape(-1, features)
+    scaled_data = scaler.transform(reshaped_data)
+    final_input = scaled_data.reshape(samples, time_steps, features)
+    
+    #predicting
+    selected_model = models[data.model_choice]
+    prediction = selected_model.predict(final_input, verbose=0)
+    
+    probability = float(prediction[0][0])
+    direction = "Up" if probability > 0.5 else "Down"
+    
+    return {
+        "predicted_direction": direction,
+        "probability_up": probability,
+        "model_used": data.model_choice
+    }

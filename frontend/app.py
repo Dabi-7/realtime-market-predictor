@@ -89,7 +89,7 @@ if st.button("🔮 Predict Market Direction"):
     # Prepare the (1, 10, 7) payload
     # -------------------------------
     data = {
-        "features": [sequence]
+        "features": [sequence],
         "model_choice": selected_model
     }
 

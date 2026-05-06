@@ -1,1 +1,4 @@
 /model.keras
+/gru.keras
+/lstm.keras
+/rnn.keras

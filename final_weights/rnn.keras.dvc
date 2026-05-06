@@ -1,0 +1,5 @@
+outs:
+- md5: 83c13cd9b58fa01270291541d8e98a89
+  size: 111802
+  hash: md5
+  path: rnn.keras

@@ -1,0 +1,42 @@
+name: CI/CD Docker Pipeline
+
+on:
+  push:
+    branches:
+      - main
+    # the pipeline would run if changes are mode to these specific files    
+    paths:
+      - 'api/**'
+      - 'main.py'
+      - 'Dockerfile'
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      # gdown hack
+      - name: Download Models from Google Drive
+        run: |
+          pip install gdown
+          # Creting directory for the docker
+          mkdir -p final_weights
+          cd final_weights
+          #--getting model form the gdrive
+          gdown --folder 19GyuWG2Wo2JU_NRm00L_-ZokgL3n1PHD
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Build and Push FastAPI Image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ${{ secrets.DOCKER_USERNAME }}/market-predictor-api:slim

@@ -39,7 +39,8 @@ services:
       - "8080:8080"
     volumes:
       - ./:/opt/airflow
-    command: standalone
+    #forcefully remove previous running PID and start ariflow
+    command: bash -c "rm -f /opt/airflow/airflow-webserver.pid && airflow standalone"
     networks:
       - X390-net
  

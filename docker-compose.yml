@@ -1,11 +1,15 @@
 version: '3.8'
 
+
 services:
-  #the backend
+#the backend
   api:
-    image: carbon390/market-predictor-api:slim-v2
+    build:
+      context: .
     ports:
       - "8000:8000"
+    volumes:
+      - ./final_weights:/app/final_weights
     networks:
       - X390-net
 
@@ -24,11 +28,17 @@ services:
 
   #airflow container
   airflow:
-    image: apache/airflow:2.7.1
+    build:
+      context: .
+      dockerfile: Dockerfile.airflow
+    user: "1000:0"
+    environment:
+      - AIRFLOW_UID=1000
+
     ports:
       - "8080:8080"
     volumes:
-      - ./:/opt/airflow/dags
+      - ./:/opt/airflow
     command: standalone
     networks:
       - X390-net

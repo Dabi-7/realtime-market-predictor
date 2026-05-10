@@ -1,0 +1,15 @@
+FROM apache/airflow:2.7.1-python3.10
+
+USER airflow
+
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir \
+    "numpy<2" \
+    yfinance \
+    feedparser \
+    vaderSentiment \
+    python-dotenv \
+    scikit-learn \
+    tensorflow \
+    mlflow \
+    joblib

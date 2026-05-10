@@ -14,14 +14,13 @@ import mlflow.keras
 os.makedirs("final_weights", exist_ok=True)
 
 # Use the Docker service name for MLflow, fallback to localhost for local testing
-MLFLOW_URI = os.getenv("MLFLOW_TRACKING_URI", "http://127.0.0.1:5000")
-mlflow.set_tracking_uri(MLFLOW_URI)
+mlflow.set_tracking_uri("sqlite:////opt/airflow/mlflow.db")
 mlflow.set_experiment("RealTime_Market_Prediction")
 
 #data ingestion
-yahoo_df = pd.read_csv("yahoo_finance_historical.csv")
-news_df = pd.read_csv("rss_news_sentiment.csv")
-av_df = pd.read_csv("av_timeseries.csv")
+yahoo_df = pd.read_csv("data/yahoo_finance_historical.csv")
+news_df = pd.read_csv("data/rss_news_sentiment.csv")
+av_df = pd.read_csv("data/av_timeseries.csv")
 
 sentiment_map = {'Positive': 1, 'Neutral': 0, 'Negative': -1}
 news_df['Sentiment'] = news_df['Sentiment'].map(sentiment_map)
@@ -118,7 +117,7 @@ for name in model_names:
         mlflow.log_metric("test_rmse", rmse)
         
         # Log to MLflow UI
-        mlflow.keras.log_model(model, name=f"MarketModel_{name}")
+        #mlflow.keras.log_model(model, name=f"MarketModel_{name}")
         
         # exporting file for backend api container
         file_path = f"final_weights/{name.lower()}.keras"

@@ -1,5 +1,5 @@
 outs:
-- md5: ad46ec726e21f6b14a8fa01d33f49195
-  size: 224755
+- md5: 5ce596e76df03b487410189ac2543de9
+  size: 224764
   hash: md5
   path: gru.keras

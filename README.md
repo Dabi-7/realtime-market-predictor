@@ -71,6 +71,26 @@ After training completes, updated artifacts will be available in `final_weights/
 
 ---
 
+## Experiment tracking (MLflow)
+
+Training logs parameters and metrics to an MLflow tracking store.
+
+- Tracking URI in code: `sqlite:////opt/airflow/mlflow.db` (see `my_version_code.py`)
+- In Docker Compose, `/opt/airflow` is bind-mounted to the repo root, so the DB will appear on your host as `./mlflow.db` after the first training run.
+
+To view runs locally on your host:
+
+```bash
+pip install mlflow
+mlflow ui --backend-store-uri sqlite:///./mlflow.db
+```
+
+Then open: http://localhost:5000
+
+Note: the training script currently exports models to `final_weights/` and logs metrics/params; model logging to MLflow is present but commented out.
+
+---
+
 ## API usage
 
 ### Health check

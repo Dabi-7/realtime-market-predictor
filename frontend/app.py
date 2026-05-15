@@ -11,6 +11,23 @@ st.set_page_config(
 )
 
 # -------------------------------
+# Session State Initialization
+# -------------------------------
+features = ['Open', 'High', 'Low', 'Close', 'Volume', 'Volatility', 'Sentiment']
+
+# 1. Initialize the memory state for the DataFrame if it doesn't exist
+if "market_data" not in st.session_state:
+    st.session_state.market_data = pd.DataFrame(
+        0.0, 
+        index=[f"Day {i+1}" for i in range(10)], 
+        columns=features
+    )
+    
+# 2. Track the last uploaded file to prevent infinite reload loops
+if "last_file" not in st.session_state:
+    st.session_state.last_file = None
+
+# -------------------------------
 # Title
 # -------------------------------
 st.title("Real-Time Market Movement Predictor")
@@ -22,42 +39,49 @@ st.markdown("Enter the last **10 days** of market data to predict tomorrow's tre
 st.subheader("10-Day Market History")
 st.caption("You can edit the cells below manually, or click the top-left cell and **paste data directly from Excel/CSV**.")
 
-# 1. Define the required features
-features = ['Open', 'High', 'Low', 'Close', 'Volume', 'Volatility', 'Sentiment']
+# 3. Render the interactive spreadsheet pulling from SESSION STATE, not a static variable!
+edited_df = st.data_editor(st.session_state.market_data, use_container_width=True)
 
-# 2. Create a default dataframe with 10 rows (Day 1 to 10) filled with 0.0
-default_data = pd.DataFrame(
-    0.0, 
-    index=[f"Day {i+1}" for i in range(10)], 
-    columns=features
-)
-
-# 3. Render the interactive spreadsheet!
-edited_df = st.data_editor(default_data, use_container_width=True)
-
-
-# Add this right above your st.data_editor line!
+# -------------------------------
+# File Uploader
+# -------------------------------
 uploaded_file = st.file_uploader("Upload a 10-day CSV file", type=["csv"])
 
+# 4. The Magic Rerun Trigger
 if uploaded_file is not None:
-    # Read the uploaded CSV
-    df = pd.read_csv(uploaded_file)
-    
-    # Ensure it only grabs the 7 features we need, and exactly 10 rows
-    try:
-        df = df[features].tail(10)
-        
-        # Overwrite the default 0.0 dataframe with the uploaded data
-        default_data.update(df.values)
-        st.success("File uploaded successfully! Review the data below.")
-    except Exception as e:
-        st.error("The uploaded CSV is missing required columns. Ensure it has: Open, High, Low, Close, Volume, Volatility, Sentiment")
+    # Only process if this is a NEW file
+    if st.session_state.last_file != uploaded_file.name:
+        try:
+            # Read the uploaded CSV
+            df = pd.read_csv(uploaded_file)
+            
+            # Ensure it only grabs the 7 features we need, and exactly 10 rows
+            df = df[features].tail(10)
+            
+            # Force the row names to match your UI (Day 1 to 10)
+            df.index = [f"Day {i+1}" for i in range(10)]
+            
+            # Overwrite the memory state
+            st.session_state.market_data = df
+            st.session_state.last_file = uploaded_file.name
+            
+            # Restart the script to redraw the grid with the new data!
+            st.rerun()
+            
+        except Exception as e:
+            st.error("The uploaded CSV is missing required columns. Ensure it has: Open, High, Low, Close, Volume, Volatility, Sentiment")
+    else:
+        st.success("File uploaded successfully! Review the data above.")
 
+# -------------------------------
+# Model Selection
+# -------------------------------
 selected_model = st.selectbox(
     "Choose AI Architecture to Test", 
     ["LSTM", "RNN", "GRU"],
     help="Select which neural network will process the data."
 )
+
 # -------------------------------
 # Predict Button
 # -------------------------------
@@ -69,8 +93,7 @@ if st.button("🔮 Predict Market Direction"):
     # -------------------------------
     # Validation
     # -------------------------------
-    # Check if the user left everything as 0.0
-
+    # 1. Check if the user left everything as 0.0
     if (edited_df.values == 0.0).all():
         st.warning("Please enter real market data. The model cannot predict on all zeros.")
         st.stop()

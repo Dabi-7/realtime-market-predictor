@@ -1,49 +1,38 @@
 version: '3.8'
 
-
 services:
-#the backend
   api:
-    build:
-      context: .
+    image: carbon390/realtime-market-predictor-api:bulky
+    container_name: p1-api
     ports:
       - "8000:8000"
-    volumes:
-      - ./final_weights:/app/final_weights
+    restart: unless-stopped
     networks:
       - X390-net
 
-
-
-  #frontend
   frontend:
-    build:
-      context: ./frontend
+    image: carbon390/realtime-market-predictor-frontend:latest
+    container_name: p1-frontend
     ports:
       - "8501:8501"
     depends_on:
       - api
+    restart: unless-stopped
     networks:
       - X390-net
 
-  #airflow container
   airflow:
-    build:
-      context: .
-      dockerfile: Dockerfile.airflow
+    image: carbon390/realtime-market-predictor-airflow:latest
+    container_name: p1-airflow
     user: "1000:0"
     environment:
       - AIRFLOW_UID=1000
-
     ports:
       - "8080:8080"
-    volumes:
-      - ./:/opt/airflow
-    #forcefully remove previous running PID and start ariflow
     command: bash -c "rm -f /opt/airflow/airflow-webserver.pid && airflow standalone"
+    restart: unless-stopped
     networks:
       - X390-net
- 
 
 networks:
   X390-net:

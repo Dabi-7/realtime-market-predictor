@@ -39,4 +39,4 @@ jobs:
         with:
           context: .
           push: true
-          tags: ${{ secrets.DOCKER_USERNAME }}/market-predictor-api:slim
+          tags: ${{ secrets.DOCKER_USERNAME }}/carbon390/realtime-market-predictor-api:bulky

@@ -22,3 +22,4 @@ CMD ["uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8000"]
 
 #triggering the first CI/CD build
 #again trigger the CI/CD
+#test trigger
